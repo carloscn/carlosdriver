@@ -1,0 +1,28 @@
+
+# SPI driver configuration
+#
+# NOTE:  the reason this doesn't show SPI slave support is mostly that
+# nobody's needed a slave side API yet.  The master-role API is not
+# fully appropriate there, so it'd need some thought to do well.
+#
+config delvis
+ 	tristate "delvis test items..."
+	depends on ARM
+	help
+	  no 
+
+config  AD9833_ADI
+        tristate "AD9833 DDS support."
+        depends on ARM
+        help
+	  GPIO on OMAPL138 configuration is:
+          AD9833_FSY_IO	-> GPIO[0,1]
+	  AD9833_CLK_IO -> GPIO[0,5]
+	  AD9833_DAT_IO -> GPIO[0,0]
+
+config DS18B20_DALLAS
+	tristate "DS18B20 dallas/maxin semiconductor."
+	depends on ARM
+	help
+	 GPIO on DS18B20 configuration is(on omapl138) 
+	 SDI -> GPIO[0,2]
