@@ -26,3 +26,9 @@ config DS18B20_DALLAS
 	help
 	 GPIO on DS18B20 configuration is(on omapl138) 
 	 SDI -> GPIO[0,2]
+
+config OLED
+	tristate "OLED SPI Display"
+	depends on SPI
+	help
+	SPI0 ENABLE

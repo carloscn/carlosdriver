@@ -1,0 +1,2 @@
+kernel/drivers/carlosdriver/ds18b20.ko
+kernel/drivers/carlosdriver/oled.ko

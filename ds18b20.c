@@ -37,6 +37,11 @@
 #include <linux/gpio.h>
 #include <linux/device.h>
 #include <linux/types.h>
+#include <linux/slab.h>
+
+
+
+#include <linux/uaccess.h>
 #include <linux/cdev.h>
 #include <linux/miscdevice.h>
 #include <linux/interrupt.h>
@@ -45,24 +50,28 @@
 #include <linux/spinlock.h>
 #include <linux/platform_device.h>
 
+#include <cfg_type.h>
+#include <cfg_gpio.h>
+#include <mach/platform.h>
+#include <mach/gpio_desc.h>
 #include <mach/gpio.h>
-#include <mach/hardware.h>
-#include <mach/da8xx.h>
-#include <mach/mux.h>
-#include <asm/uaccess.h>
-#include <asm/div64.h>
+#include <mach/soc.h>
 
+#include <asm/div64.h>
+#include <asm/io.h>
 
 /**
 * \brief    connector.
 *
-*              OMAPL138
+*              SP6818/
 *             ---------------
 *            |               |
-*    sdi <-->|GPIO[0,6]      |
+*    sdi <-->|GPIOC14        |
 *            |               |
 *
 */
+#define				__SAMSUNG_SP6818			0
+#define				__TI_OMAPL138				1
 
 #define             DRV_AUTHOR                  "Wei haochen <weihaochen@mltbns.com>"
 #define             DRV_DESC                    "DS18B20 Dallas / OMAPL138-GPIO[0,2]"
@@ -78,10 +87,10 @@
 #define             IO_HIGH                     1
 #define             IO_LOW                      0
 
-#define             DS18B20_SDI_IO              GPIO_TO_PIN(0, 5)
+#define             DS18B20_SDI_IO              PAD_GPIO_C + 14
 #define             IO_SDI(x,y)                 gpio_direction_output( DS18B20_SDI_IO ,x ); udelay(y)
 
-#define             KEY_IO                      GPIO_TO_PIN(6, 1)
+#define             KEY_IO                      PAD_GPIO_C+4
 
 
 /* DS18B20 one wire family code. */
@@ -197,7 +206,7 @@ struct gpio_irq_desc {
 
 } press_dev_desc = {
 
-        IRQ_DA8XX_GPIO0,
+        KEY_IO,
         IRQ_TYPE_EDGE_FALLING,
         "sw6_push_button"
 
@@ -229,31 +238,48 @@ DS18B20 *ds18b20_dev_new()
     dev_p->master->convert          =   &ds18b20_module_convert;
     
     dev_p->master->init( dev_p );
-
+	
     return dev_p;
 }
 
 
 static void ds18b20_module_hw_set_high( DS18B20 *dev)
 {
+#if __TI_OMAPL138
     gpio_direction_output( dev->hw.sdi , IO_HIGH );
+#elif __SAMSUNG_SP6818
+	nxp_soc_gpio_set_out_value( dev->hw.sdi , IO_HIGH);
+#endif
 }
 
 static void ds18b20_module_hw_set_low( DS18B20 *dev )
 {
-    gpio_direction_output( dev->hw.sdi , IO_LOW);
+#if __TI_OMAPL138
+	gpio_direction_output( dev->hw.sdi , IO_LOW );
+#elif __SAMSUNG_SP6818
+	nxp_soc_gpio_set_out_value( dev->hw.sdi , IO_LOW);
+#endif
+	
 }
 
 static int ds18b20_module_hw_read_line( DS18B20 *dev )
 {
     int ret;
+#if __TI_OMAPL138
     gpio_direction_input( dev->hw.sdi );
-    
+
     if ( gpio_get_value( dev->hw.sdi ) != 0 ) 
         ret = 1;
     else
         ret = 0;
-    
+#elif __SAMSUNG_SP6818
+	nxp_soc_gpio_set_io_dir(dev->hw.sdi, 0);
+
+	if ( nxp_soc_gpio_get_in_value( dev->hw.sdi ) != 0 ) 
+        ret = 1;
+    else
+        ret = 0;
+#endif
     return ret;
 }
 
@@ -613,10 +639,21 @@ static int __init ds18b20_driver_init( void )
         }
 
     }
+#if __TI_OMAPL138
     gpio_direction_output( DS18B20_SDI_IO, 1 );
     gpio_set_value( DS18B20_SDI_IO, 1 );
     gpio_direction_output( KEY_IO, 0 );
-   
+
+#elif __SAMSUNG_SP6818
+	printk( DRV_NAME "\tnxp gpio set..." );
+	nxp_soc_gpio_set_io_func( DS18B20_SDI_IO, 0);
+	nxp_soc_gpio_set_io_pull_enb(DS18B20_SDI_IO, 0);
+	nxp_soc_gpio_set_int_enable(DS18B20_SDI_IO, 0);
+	nxp_soc_gpio_set_io_dir( DS18B20_SDI_IO , 1);
+	nxp_soc_gpio_set_out_value( DS18B20_SDI_IO , IO_HIGH);
+	nxp_soc_gpio_set_io_drv( DS18B20_SDI_IO, 0);
+
+#endif
     /*
      * interrupt apply
      * */
@@ -648,6 +685,14 @@ static int __init ds18b20_driver_init( void )
     
     temp_value = ds18b20->master->read_temp(ds18b20);
     printk(DRV_NAME "\tThe temp is : %d \n", ds18b20->temp_value);  
+	for ( i = 0; i < 2500; i ++ ) {
+		
+		if( i%2 == 0 ) { 
+			gpio_set_value( DS18B20_SDI_IO, 1 );
+		}else{
+			gpio_set_value( DS18B20_SDI_IO, 0 );
+		}
+	}
     return 0;
 
 
@@ -679,5 +724,10 @@ module_exit( ds18b20_driver_exit );
 MODULE_AUTHOR( DRV_AUTHOR );
 MODULE_DESCRIPTION(DRV_DESC);
 MODULE_LICENSE("GPL");
+
+
+
+
+
 
 
