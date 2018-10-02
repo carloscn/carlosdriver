@@ -2,7 +2,8 @@
 /*
  * DS18B20 of Dallas driver code for Texas Instruments OMAPL138+
  *
- * Copyright (C) 2018 Wei Haochen
+ * (C) Copyright 2018
+ * Carlos Wei, NWPU, <weihaochen@mail.nwpu.edu.cn>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
